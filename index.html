@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b3a67">
+<title>Delovni dnevnik</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+:root{--bg:#eef0f5;--card:#fff;--ink:#1c2233;--mute:#6b7388;--line:#e1e5ee;--accent:#2b3a67;--on:#fff;
+--work:#1f9d6b;--early:#e8a317;--vac:#3b82f6;--sick:#e5484d;}
+@media(prefers-color-scheme:dark){:root{--bg:#121622;--card:#1b2133;--ink:#eef0f7;--mute:#8d96ad;--line:#2a3148;--accent:#8fa4ff;--on:#121622}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-top:env(safe-area-inset-top)}
+main{max-width:520px;margin:0 auto;padding:16px 16px 110px}
+h1{font-size:26px;margin:8px 0 2px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 16px}
+.card{background:var(--card);border-radius:20px;padding:16px;margin-bottom:14px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{background:var(--accent);color:var(--on);border-radius:14px;padding:13px 18px;font-weight:600;width:100%}
+.btn.ghost{background:var(--bg);color:var(--ink)}
+.btn.danger{background:none;color:var(--sick)}
+.banner{background:#fff4dc;color:#6a4a00;border-radius:16px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;align-items:center;width:100%;text-align:left}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.stats b{display:block;font-size:22px}.stats span{font-size:12px;color:var(--mute)}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.nav button{width:40px;height:40px;border-radius:12px;background:var(--bg);font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:12px;color:var(--mute);text-align:center;padding-bottom:4px}
+.day{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:15px;position:relative;background:var(--bg)}
+.day.empty{background:none}.day.we{opacity:.55}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day i{width:6px;height:6px;border-radius:50%;margin-top:3px}
+.day small{font-size:10px;color:var(--mute);line-height:1}
+.work{background:var(--work)}.early{background:var(--early)}.vac{background:var(--vac)}.sick{background:var(--sick)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:12px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.row:last-child{border:0}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.tabs button{flex:1;max-width:160px;padding:10px;border-radius:14px;color:var(--mute);font-weight:600}
+.tabs button.on{color:var(--accent);background:var(--bg)}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,14,25,.5);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.chip{padding:12px 4px;border-radius:14px;background:var(--bg);font-weight:600;border:2px solid transparent}
+.chip.on{border-color:var(--accent)}
+.step{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.step div{display:flex;align-items:center;gap:14px}
+.step button{width:42px;height:42px;border-radius:12px;background:var(--bg);font-size:22px}
+.step output{min-width:56px;text-align:center;font-weight:700;font-size:18px}
+input[type=text],input[type=time],input[type=number],input[type=date]{font:inherit;color:inherit;background:var(--bg);border:0;border-radius:12px;padding:12px;width:100%}
+.sw{display:flex;align-items:center;gap:10px}
+.sw input{width:22px;height:22px;accent-color:var(--accent)}
+.gap{display:grid;gap:8px;margin-top:12px}
+.bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.bal b{display:block;font-size:30px;letter-spacing:-.02em}.bal span{font-size:13px;color:var(--mute)}.pos{color:var(--work)}.neg{color:var(--sick)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav class="tabs" id="tabs"></nav>
+<div id="sheet"></div>
+<script>
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const keyOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
+const fmtH=h=>(Math.round(h*10)/10).toString().replace(/\.0$/,'');
+const MONTHS=['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
+const T={work:'Delal',vac:'Plačan dopust',sick:'Bolniška'};
+let D=Object.assign({e:{},std:8,rem:'18:00',remOn:false,lastN:'',vac0:0,plus0:0,from:''},JSON.parse(localStorage.getItem('wl')||'{}'));
+const save=()=>localStorage.setItem('wl',JSON.stringify(D));
+let tab='cal',view=new Date(),draft=null,draftKey=null,detail=null;
+view.setDate(1);
+
+function summary(ym){
+  const s={work:0,hours:0,vac:0,sick:0,early:0,ot:0,days:[]};
+  for(const k of Object.keys(D.e).sort()){
+    if(!k.startsWith(ym))continue;const e=D.e[k];s.days.push(k);
+    if(e.t==='work'){s.work++;s.hours+=e.h;s.early+=e.early||0;s.ot+=e.h-D.std}else s[e.t]++;
+  }
+  return s;
+}
+function balances(){
+  let v=+D.vac0||0,p=+D.plus0||0;const f=D.from||'0000';
+  for(const k in D.e){if(k<f)continue;const e=D.e[k];if(e.t==='vac')v--;else if(e.t==='work')p+=e.h-D.std}
+  return{v,p};
+}
+const sg=n=>(n>0?'+':n<0?'−':'')+fmtH(Math.abs(n));
+function dotClass(e){return e.t==='work'?(e.early>0?'early':'work'):e.t}
+function missing(){
+  const out=[],d=new Date();
+  for(let i=1;i<=14;i++){const x=new Date();x.setDate(d.getDate()-i);
+    if(x.getDay()%6!==0&&!D.e[keyOf(x)])out.push(keyOf(x));}
+  return out;
+}
+
+function render(){
+  $('#tabs').innerHTML=[['cal','Koledar'],['arch','Meseci'],['set','Nastavitve']]
+    .map(([k,l])=>`<button class="${tab===k?'on':''}" data-a="tab" data-v="${k}">${l}</button>`).join('');
+  $('#app').innerHTML=tab==='cal'?calView():tab==='arch'?archView():setView();
+}
+function statsHtml(s){
+  return `<div class="stats"><div><b>${s.work}</b><span>dni dela</span></div><div><b>${fmtH(s.hours)}</b><span>ur</span></div><div><b>${s.vac}</b><span>dopust</span></div><div><b>${s.sick}</b><span>bolniška</span></div></div>`;
+}
+function calView(){
+  const y=view.getFullYear(),m=view.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate();
+  const today=keyOf(new Date()),miss=missing(),b=balances();
+  let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
+  for(let d=1;d<=n;d++){
+    const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
+    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
+  }
+  return `<h1>Delovni dnevnik</h1><p class="sub">${new Date().toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</p>
+  ${miss.length?`<button class="banner" data-a="day" data-v="${miss[0]}"><span><b>Nevpisani delovni dnevi: ${miss.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>`:''}
+  <div class="card bal"><div><b class="${b.v<0?'neg':''}">${fmtH(b.v)}</b><span>dni dopusta ostalo</span></div><div><b class="${b.p<0?'neg':'pos'}">${sg(b.p)} h</b><span>${b.p<0?'ur za nadoknaditi':'ur v plusu'}</span></div></div>
+  ${D.e[today]?'':`<button class="btn" style="margin-bottom:14px" data-a="day" data-v="${today}">Vpiši danes</button>`}
+  <div class="card"><div class="nav"><button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button><h2 style="margin:0">${MONTHS[m]} ${y}</h2><button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button></div>
+  <div class="grid">${['P','T','S','Č','P','S','N'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
+  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span></div></div>
+  <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(ymOf(view)))}</div>`;
+}
+function archView(){
+  const months=new Set(Object.keys(D.e).map(k=>k.slice(0,7)));months.add(ymOf(new Date()));
+  const rows=[...months].sort().reverse().map(ym=>{const s=summary(ym),[y,m]=ym.split('-');
+    return `<button class="row" data-a="month" data-v="${ym}"><span><b>${MONTHS[m-1]} ${y}</b><br><span class="sub" style="margin:0">${s.work} dni · ${fmtH(s.hours)} h${s.vac?` · ${s.vac} dopust`:''}${s.sick?` · ${s.sick} bolniška`:''}</span></span><span>›</span></button>`}).join('');
+  return `<h1>Meseci</h1><p class="sub">Vsak mesec je shranjen tukaj s seštevki.</p><div class="card">${rows}</div>`;
+}
+function setView(){
+  const perm='Notification'in window?Notification.permission:'unsupported';
+  return `<h1>Nastavitve</h1><p class="sub">Podatki ostanejo na tej napravi.</p>
+  <div class="card"><h2>Stanja</h2>
+  <div class="step"><span>Preostali dnevi dopusta</span><input type="number" id="vac0" step="0.5" value="${D.vac0}" style="width:100px;text-align:center"></div>
+  <div class="step"><span>Ure v plusu (minus, če jih dolgujem)</span><input type="number" id="plus0" step="0.5" value="${D.plus0}" style="width:100px;text-align:center"></div>
+  <div class="step"><span>Šteje od</span><input type="date" id="from" value="${D.from}" style="width:150px"></div>
+  <p class="sub" style="margin:8px 0 0;font-size:14px">Vnesi stanja, kot so na ta datum. Dnevi, ki jih vpišeš od takrat naprej, jih posodobijo samodejno: ure nad standardnim dnevom gredo v plus, ure pod njim se odštejejo, vsak dan dopusta pa se odšteje od dopusta.</p></div>
+  <div class="card"><h2>Standardni delovnik</h2><div class="step"><span>Ur na dan</span><div><button data-a="std" data-v="-0.5">−</button><output>${fmtH(D.std)} h</output><button data-a="std" data-v="0.5">+</button></div></div></div>
+  <div class="card"><h2>Dnevni opomnik</h2><label class="sw"><input type="checkbox" id="remOn" ${D.remOn?'checked':''}> Opomni me, če danes nisem vpisal</label>
+  <div class="gap"><input type="time" id="rem" value="${D.rem}" aria-label="Ura opomnika"></div>
+  <p class="sub" style="margin:10px 0 0;font-size:14px">Obvestila: ${({granted:'dovoljena',denied:'blokirana',default:'še ne dovoljena',unsupported:'ni podprta'})[perm]||perm}. Opomniki se sprožijo, ko je aplikacija odprta ali jo prebudi telefon; oranžna oznaka na koledarju vedno pokaže nevpisane dni.</p><div class="gap"><button class="btn ghost" data-a="test">Pošlji testno obvestilo</button></div></div>
+  <div class="card"><h2>Varnostna kopija</h2><div class="gap"><button class="btn ghost" data-a="export">Izvozi podatke</button><button class="btn ghost" data-a="import">Uvozi podatke</button></div></div>`;
+}
+function monthDetail(ym){
+  const s=summary(ym),[y,m]=ym.split('-');
+  const list=s.days.map(k=>{const e=D.e[k],d=new Date(k+'T12:00');
+    const txt=e.t==='work'?`${fmtH(e.h)} h${e.early?` · odšel ${fmtH(e.early)} h prej`:''}`:T[e.t];
+    return `<button class="row" data-a="day" data-v="${k}"><span><i class="${dotClass(e)}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px"></i>${d.toLocaleDateString('sl-SI',{weekday:'short',day:'numeric'})}</span><span>${txt}</span></button>`}).join('')||'<p class="sub">Še nič vpisanega.</p>';
+  return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop><h2>${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
+  <p class="sub" style="margin-top:12px">Prej odšel: ${fmtH(s.early)} h · Nad/pod standardom: ${sg(s.ot)} h</p>${list}<div class="gap"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
+}
+function sheetHtml(){
+  const d=new Date(draftKey+'T12:00'),w=draft.t==='work';
+  return `<div class="sheet-bg" data-a="cancel"><div class="sheet" data-stop>
+  <h2>${d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</h2>
+  <div class="chips">${Object.entries(T).map(([k,l])=>`<button class="chip ${draft.t===k?'on':''}" data-a="type" data-v="${k}">${l}</button>`).join('')}</div>
+  ${w?`<div class="step"><span>Opravljene ure</span><div><button data-a="h" data-v="-0.5">−</button><output>${fmtH(draft.h)} h</output><button data-a="h" data-v="0.5">+</button></div></div>
+  <div class="step"><span>Prej odšel za</span><div><button data-a="early" data-v="-0.5">−</button><output>${fmtH(draft.early)} h</output><button data-a="early" data-v="0.5">+</button></div></div>`:''}
+  <div class="gap"><input type="text" id="note" placeholder="Opomba (neobvezno)" value="${(draft.note||'').replace(/"/g,'&quot;')}">
+  <button class="btn" data-a="save">Shrani</button>
+  ${D.e[draftKey]?'<button class="btn danger" data-a="del">Odstrani vnos</button>':''}
+  <button class="btn ghost" data-a="cancel">Prekliči</button></div></div></div>`;
+}
+function drawSheet(){$('#sheet').innerHTML=detail?monthDetail(detail):draft?sheetHtml():'';}
+
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-a]');if(!t)return;
+  if(ev.target.closest('[data-stop]')&&t.classList.contains('sheet-bg'))return;
+  const a=t.dataset.a,v=t.dataset.v;
+  if(draft&&$('#note'))draft.note=$('#note').value;
+  if(a==='tab'){tab=v;render()}
+  else if(a==='mo'){view.setMonth(view.getMonth()+ +v);render()}
+  else if(a==='day'){draftKey=v;draft=Object.assign({t:'work',h:D.std,early:0,note:''},D.e[v]);detail=null;drawSheet()}
+  else if(a==='month'){detail=v;drawSheet()}
+  else if(a==='close'){detail=null;drawSheet()}
+  else if(a==='cancel'){draft=null;drawSheet()}
+  else if(a==='type'){draft.t=v;drawSheet()}
+  else if(a==='h'){draft.h=Math.max(0,Math.min(24,draft.h+ +v));drawSheet()}
+  else if(a==='early'){const n=Math.max(0,Math.min(D.std,draft.early+ +v));draft.h=Math.max(0,draft.h-(n-draft.early));draft.early=n;drawSheet()}
+  else if(a==='save'){const e={t:draft.t,note:draft.note};if(e.t==='work'){e.h=draft.h;e.early=draft.early}D.e[draftKey]=e;save();draft=null;drawSheet();render()}
+  else if(a==='del'){delete D.e[draftKey];save();draft=null;drawSheet();render()}
+  else if(a==='std'){D.std=Math.max(1,Math.min(24,D.std+ +v));save();render()}
+  else if(a==='test'){testNotif()}
+  else if(a==='export'){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='worklog-backup.json';l.click()}
+  else if(a==='import'){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=async()=>{try{D=Object.assign(D,JSON.parse(await i.files[0].text()));save();render()}catch(e){alert('Te datoteke ni mogoče prebrati kot varnostno kopijo.')}};i.click()}
+});
+document.addEventListener('change',async ev=>{
+  if(ev.target.id==='vac0'||ev.target.id==='plus0'){D[ev.target.id]=parseFloat(ev.target.value)||0;if(!D.from)D.from=keyOf(new Date());save();render()}
+  if(ev.target.id==='from'){D.from=ev.target.value;save();render()}
+  if(ev.target.id==='rem'){D.rem=ev.target.value;save()}
+  if(ev.target.id==='remOn'){D.remOn=ev.target.checked;
+    if(D.remOn&&'Notification'in window&&Notification.permission==='default')await Notification.requestPermission();
+    save();render();checkReminder()}
+});
+
+async function testNotif(){
+  try{
+    const N=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins.LocalNotifications;
+    if(N){let p=await N.checkPermissions();if(p.display!=='granted')p=await N.requestPermissions();
+      if(p.display!=='granted'){alert('Obvestila so blokirana. Dovoli jih v nastavitvah Androida za to aplikacijo.');return}
+      await N.schedule({notifications:[{id:999,title:'Delovni dnevnik',body:'Test: opomniki delujejo.',schedule:{at:new Date(Date.now()+3000)}}]});return}
+    if(!('Notification'in window)){alert('Ta brskalnik ne podpira obvestil.');return}
+    let p=Notification.permission;if(p==='default')p=await Notification.requestPermission();
+    if(p!=='granted'){alert('Obvestila so blokirana. Dovoli jih v nastavitvah brskalnika za to stran.');return}
+    const o={body:'Test: opomniki delujejo.',icon:'icon.svg'};
+    const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
+    if(r)r.showNotification('Delovni dnevnik',o);else new Notification('Delovni dnevnik',o);
+  }catch(e){alert('Brskalnik ni mogel prikazati obvestila.')}
+}
+async function checkReminder(){
+  if(!D.remOn||!('Notification'in window)||Notification.permission!=='granted')return;
+  const now=new Date(),today=keyOf(now),hm=pad(now.getHours())+':'+pad(now.getMinutes());
+  if(D.e[today]||D.lastN===today||hm<D.rem||now.getDay()%6===0)return;
+  D.lastN=today;save();
+  const o={body:'Danes še nisi vpisal delovnega časa.',icon:'icon.svg',tag:'wl'};
+  try{const r=await navigator.serviceWorker.ready;r.showNotification('Delovni dnevnik',o)}catch(e){new Notification('Delovni dnevnik',o)}
+}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').then(r=>{
+  if(r.periodicSync)navigator.permissions.query({name:'periodic-background-sync'}).then(p=>{if(p.state==='granted')r.periodicSync.register('wl-remind',{minInterval:3600e3})}).catch(()=>{});
+  navigator.serviceWorker.addEventListener('message',e=>{if(e.data==='remind')checkReminder()});
+}).catch(()=>{});
+setInterval(checkReminder,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();checkReminder()}});
+render();checkReminder();
+</script>
+</body>
+</html>
