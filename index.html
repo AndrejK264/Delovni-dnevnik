@@ -127,7 +127,7 @@ function statsHtml(s){
 }
 function calView(){
   const y=view.getFullYear(),m=view.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate();
-  const today=keyOf(new Date()),miss=missing(),b=balances(),hl=Object.keys(holidays(y)).filter(h=>h.startsWith(y+'-'+pad(m+1))).sort().map(h=>(+h.slice(8))+'. '+holidays(y)[h]).join(' · ');
+  const today=keyOf(new Date()),miss=missing(),b=balances();
   let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
   for(let d=1;d<=n;d++){
     const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
@@ -139,7 +139,7 @@ function calView(){
   ${D.e[today]?'':`<button class="btn" style="margin-bottom:14px" data-a="day" data-v="${today}">Vpiši danes</button>`}
   <div class="card"><div class="nav"><button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button><h2 style="margin:0">${MONTHS[m]} ${y}</h2><button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button></div>
   <div class="grid">${['P','T','S','Č','P','S','N'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
-  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span><span><i class="ot"></i>Nadure</span><span><i class="hol"></i>Praznik</span></div>${hl?`<p class="sub" style="margin:10px 0 0;font-size:14px">Prazniki: ${hl}</p>`:''}</div>
+  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span><span><i class="ot"></i>Nadure</span><span><i class="hol"></i>Praznik</span></div></div>
   <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(ymOf(view)))}</div>`;
 }
 function archView(){
