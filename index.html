@@ -57,7 +57,7 @@ input[type=text],input[type=time],input[type=number],input[type=date]{font:inher
 .sw input{width:22px;height:22px;accent-color:var(--accent)}
 .gap{display:grid;gap:8px;margin-top:12px}
 .bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.bal b{display:block;font-size:30px;letter-spacing:-.02em}.bal span{font-size:13px;color:var(--mute)}.pos{color:var(--work)}.neg{color:var(--sick)}
-.plus{background:#af52de}.ot{background:#ff2d92}.chip{font-size:12px;line-height:1.15}
+.plus{background:#af52de}.ot{background:#ff2d92}.hol{background:#14b8a6}.chip{font-size:12px;line-height:1.15}
 .chips{grid-template-columns:repeat(2,1fr)}
 </style>
 </head>
@@ -79,29 +79,41 @@ let tab='cal',view=new Date(),draft=null,draftKey=null,detail=null;
 view.setDate(1);
 
 function summary(ym){
-  const s={work:0,hours:0,vac:0,sick:0,early:0,ot:0,plus:0,pd:0,days:[]};
+  const s={work:0,hours:0,vac:0,sick:0,early:0,ot:0,plus:0,pd:0,extra:0,days:[]};
   for(const k of Object.keys(D.e).sort()){
     if(!k.startsWith(ym))continue;const e=D.e[k];s.days.push(k);
-    s.pd+=plusDelta(e);if(e.t==='work'){s.work++;s.hours+=Math.min(e.h,D.std);s.early+=Math.max(0,D.std-e.h)}else s[e.t]++;
+    const off=isOff(k);s.pd+=plusDelta(e,k);if(e.t==='work'){if(off)s.extra+=e.h;else{s.work++;s.hours+=Math.min(e.h,D.std);s.early+=Math.max(0,D.std-e.h)}}else if(!off)s[e.t]++;
   }
   return s;
 }
-function plusDelta(e){
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,dd=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-dd-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+const HC={};
+function holidays(y){
+  if(HC[y])return HC[y];
+  const E=easter(y),add=n=>{const x=new Date(E);x.setDate(x.getDate()+n);return keyOf(x)},o={};
+  [["01-01", "Novo leto"], ["01-02", "Novo leto (2. dan)"], ["02-08", "Prešernov dan"], ["04-27", "Dan upora proti okupatorju"], ["05-01", "Praznik dela"], ["05-02", "Praznik dela (2. dan)"], ["06-25", "Dan državnosti"], ["08-15", "Marijino vnebovzetje"], ["10-31", "Dan reformacije"], ["11-01", "Dan spomina na mrtve"], ["12-25", "Božič"], ["12-26", "Dan samostojnosti in enotnosti"]].forEach(([md,n])=>o[y+'-'+md]=n);
+  o[add(0)]="Velikonočna nedelja";o[add(1)]="Velikonočni ponedeljek";o[add(49)]="Binkoštna nedelja";
+  return HC[y]=o;
+}
+const isHol=k=>holidays(+k.slice(0,4))[k]||null;
+const isOff=k=>{const w=new Date(k+'T12:00').getDay();return w===0||w===6||!!isHol(k)};
+function plusDelta(e,k){
+  if(k&&isOff(k))return e.t==='work'?e.h:0;
   if(e.t==='work')return Math.max(0,e.h-D.std)-(e.np?0:Math.max(0,D.std-e.h));
   if(e.t==='plus')return -e.h;
   return 0;
 }
 function balances(){
   let v=+D.vac0||0,p=+D.plus0||0;const f=D.from||'0000';
-  for(const k in D.e){if(k<f)continue;const e=D.e[k];if(e.t==='vac')v--;p+=plusDelta(e)}
+  for(const k in D.e){if(k<f)continue;const e=D.e[k];if(e.t==='vac'&&!isOff(k))v--;p+=plusDelta(e,k)}
   return{v,p};
 }
 const sg=n=>(n>0?'+':n<0?'−':'')+fmtH(Math.abs(n));
-function dotClass(e){return e.t==='work'?(e.h<D.std?'early':e.h>D.std?'ot':'work'):e.t}
+function dotClass(e,k){return e.t==='work'?(k&&isOff(k)?'ot':e.h<D.std?'early':e.h>D.std?'ot':'work'):e.t}
 function missing(){
   const out=[],d=new Date();
   for(let i=1;i<=14;i++){const x=new Date();x.setDate(d.getDate()-i);
-    if(x.getDay()%6!==0&&!D.e[keyOf(x)])out.push(keyOf(x));}
+    if(!isOff(keyOf(x))&&!D.e[keyOf(x)])out.push(keyOf(x));}
   return out;
 }
 
@@ -115,11 +127,11 @@ function statsHtml(s){
 }
 function calView(){
   const y=view.getFullYear(),m=view.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate();
-  const today=keyOf(new Date()),miss=missing(),b=balances();
+  const today=keyOf(new Date()),miss=missing(),b=balances(),hl=Object.keys(holidays(y)).filter(h=>h.startsWith(y+'-'+pad(m+1))).sort().map(h=>(+h.slice(8))+'. '+holidays(y)[h]).join(' · ');
   let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
   for(let d=1;d<=n;d++){
     const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
-    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
+    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}" title="${isHol(k)||''}">${d}${e?`<i class="${dotClass(e,k)}"></i>`:isHol(k)?'<i class="hol"></i>':''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
   }
   return `<h1>Delovni dnevnik</h1><p class="sub">${new Date().toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</p>
   ${miss.length?`<button class="banner" data-a="day" data-v="${miss[0]}"><span><b>Nevpisani delovni dnevi: ${miss.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>`:''}
@@ -127,7 +139,7 @@ function calView(){
   ${D.e[today]?'':`<button class="btn" style="margin-bottom:14px" data-a="day" data-v="${today}">Vpiši danes</button>`}
   <div class="card"><div class="nav"><button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button><h2 style="margin:0">${MONTHS[m]} ${y}</h2><button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button></div>
   <div class="grid">${['P','T','S','Č','P','S','N'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
-  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span><span><i class="ot"></i>Nadure</span></div></div>
+  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span><span><i class="ot"></i>Nadure</span><span><i class="hol"></i>Praznik</span></div>${hl?`<p class="sub" style="margin:10px 0 0;font-size:14px">Prazniki: ${hl}</p>`:''}</div>
   <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(ymOf(view)))}</div>`;
 }
 function archView(){
@@ -153,15 +165,16 @@ function setView(){
 function monthDetail(ym){
   const s=summary(ym),[y,m]=ym.split('-');
   const list=s.days.map(k=>{const e=D.e[k],d=new Date(k+'T12:00');
-    const sf=Math.max(0,D.std-e.h),ov=Math.max(0,e.h-D.std);const txt=e.t==='work'?`${fmtH(Math.min(e.h,D.std))} h${sf?` · odšel ${fmtH(sf)} h prej`:''}${ov?` · +${fmtH(ov)} h v plus`:''}`:e.t==='plus'?`${T.plus} ${fmtH(e.h)} h`:T[e.t];
-    return `<button class="row" data-a="day" data-v="${k}"><span><i class="${dotClass(e)}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px"></i>${d.toLocaleDateString('sl-SI',{weekday:'short',day:'numeric'})}</span><span>${txt}</span></button>`}).join('')||'<p class="sub">Še nič vpisanega.</p>';
+    const off=isOff(k),sf=off?0:Math.max(0,D.std-e.h),ov=off?e.h:Math.max(0,e.h-D.std);const txt=e.t==='work'?`${fmtH(off?e.h:Math.min(e.h,D.std))} h${sf?` · odšel ${fmtH(sf)} h prej`:''}${ov?` · +${fmtH(ov)} h v plus`:''}`:e.t==='plus'?`${T.plus} ${fmtH(e.h)} h`:T[e.t];
+    return `<button class="row" data-a="day" data-v="${k}"><span><i class="${dotClass(e,k)}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px"></i>${d.toLocaleDateString('sl-SI',{weekday:'short',day:'numeric'})}</span><span>${txt}</span></button>`}).join('')||'<p class="sub">Še nič vpisanega.</p>';
   return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop><h2>${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
-  <p class="sub" style="margin-top:12px">Prej odšel: ${fmtH(s.early)} h · Sprememba plus ur: ${sg(s.pd)} h</p>${list}<div class="gap"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
+  <p class="sub" style="margin-top:12px">Prej odšel: ${fmtH(s.early)} h · Sprememba plus ur: ${sg(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>${list}<div class="gap"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
 }
 function sheetHtml(){
   const d=new Date(draftKey+'T12:00'),w=draft.t==='work';
   return `<div class="sheet-bg" data-a="cancel"><div class="sheet" data-stop>
   <h2>${d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</h2>
+  ${isOff(draftKey)?`<p class="sub" style="margin:0 0 4px">${isHol(draftKey)?isHol(draftKey)+' – praznik, dela prost dan. ':'Vikend. '}Dopust in plus ure se ne porabljajo. Če delaš, gredo vse ure v plus.</p>`:''}
   <div class="chips">${Object.entries(T).map(([k,l])=>`<button class="chip ${draft.t===k?'on':''}" data-a="type" data-v="${k}">${l}</button>`).join('')}</div>
   ${w?`<div class="step"><span>Opravljene ure</span><div><button data-a="h" data-v="-0.5">−</button><output>${fmtH(draft.h)} h</output><button data-a="h" data-v="0.5">+</button></div></div>
   <div class="step"><span>Prej odšel za</span><div><button data-a="early" data-v="-0.5">−</button><output>${fmtH(Math.max(0,D.std-draft.h))} h</output><button data-a="early" data-v="0.5">+</button></div></div>
@@ -221,7 +234,7 @@ async function testNotif(){
 async function checkReminder(){
   if(!D.remOn||!('Notification'in window)||Notification.permission!=='granted')return;
   const now=new Date(),today=keyOf(now),hm=pad(now.getHours())+':'+pad(now.getMinutes());
-  if(D.e[today]||D.lastN===today||hm<D.rem||now.getDay()%6===0)return;
+  if(D.e[today]||D.lastN===today||hm<D.rem||isOff(today))return;
   D.lastN=today;save();
   const o={body:'Danes še nisi vpisal delovnega časa.',icon:'icon.svg',tag:'wl'};
   try{const r=await navigator.serviceWorker.ready;r.showNotification('Delovni dnevnik',o)}catch(e){new Notification('Delovni dnevnik',o)}
