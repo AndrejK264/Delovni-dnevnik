@@ -57,7 +57,7 @@ input[type=text],input[type=time],input[type=number],input[type=date]{font:inher
 .sw input{width:22px;height:22px;accent-color:var(--accent)}
 .gap{display:grid;gap:8px;margin-top:12px}
 .bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.bal b{display:block;font-size:30px;letter-spacing:-.02em}.bal span{font-size:13px;color:var(--mute)}.pos{color:var(--work)}.neg{color:var(--sick)}
-.plus{background:#af52de}.chip{font-size:12px;line-height:1.15}
+.plus{background:#af52de}.ot{background:#ff2d92}.chip{font-size:12px;line-height:1.15}
 .chips{grid-template-columns:repeat(2,1fr)}
 </style>
 </head>
@@ -97,7 +97,7 @@ function balances(){
   return{v,p};
 }
 const sg=n=>(n>0?'+':n<0?'−':'')+fmtH(Math.abs(n));
-function dotClass(e){return e.t==='work'?(e.h<D.std?'early':'work'):e.t}
+function dotClass(e){return e.t==='work'?(e.h<D.std?'early':e.h>D.std?'ot':'work'):e.t}
 function missing(){
   const out=[],d=new Date();
   for(let i=1;i<=14;i++){const x=new Date();x.setDate(d.getDate()-i);
@@ -119,7 +119,7 @@ function calView(){
   let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
   for(let d=1;d<=n;d++){
     const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
-    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(Math.min(e.h,D.std))}h</small>`:''}</button>`;
+    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
   }
   return `<h1>Delovni dnevnik</h1><p class="sub">${new Date().toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</p>
   ${miss.length?`<button class="banner" data-a="day" data-v="${miss[0]}"><span><b>Nevpisani delovni dnevi: ${miss.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>`:''}
@@ -127,7 +127,7 @@ function calView(){
   ${D.e[today]?'':`<button class="btn" style="margin-bottom:14px" data-a="day" data-v="${today}">Vpiši danes</button>`}
   <div class="card"><div class="nav"><button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button><h2 style="margin:0">${MONTHS[m]} ${y}</h2><button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button></div>
   <div class="grid">${['P','T','S','Č','P','S','N'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
-  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span></div></div>
+  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span><span><i class="ot"></i>Nadure</span></div></div>
   <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(ymOf(view)))}</div>`;
 }
 function archView(){
