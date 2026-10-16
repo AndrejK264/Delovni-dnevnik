@@ -57,6 +57,8 @@ input[type=text],input[type=time],input[type=number],input[type=date]{font:inher
 .sw input{width:22px;height:22px;accent-color:var(--accent)}
 .gap{display:grid;gap:8px;margin-top:12px}
 .bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.bal b{display:block;font-size:30px;letter-spacing:-.02em}.bal span{font-size:13px;color:var(--mute)}.pos{color:var(--work)}.neg{color:var(--sick)}
+.plus{background:#af52de}.chip{font-size:12px;line-height:1.15}
+.chips{grid-template-columns:repeat(2,1fr)}
 </style>
 </head>
 <body>
@@ -70,27 +72,32 @@ const keyOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
 const fmtH=h=>(Math.round(h*10)/10).toString().replace(/\.0$/,'');
 const MONTHS=['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
-const T={work:'Delal',vac:'Plačan dopust',sick:'Bolniška'};
+const T={work:'Delal',vac:'Plačan dopust',sick:'Bolniška',plus:'Plus ure'};
 let D=Object.assign({e:{},std:8,rem:'18:00',remOn:false,lastN:'',vac0:0,plus0:0,from:''},JSON.parse(localStorage.getItem('wl')||'{}'));
 const save=()=>localStorage.setItem('wl',JSON.stringify(D));
 let tab='cal',view=new Date(),draft=null,draftKey=null,detail=null;
 view.setDate(1);
 
 function summary(ym){
-  const s={work:0,hours:0,vac:0,sick:0,early:0,ot:0,days:[]};
+  const s={work:0,hours:0,vac:0,sick:0,early:0,ot:0,plus:0,pd:0,days:[]};
   for(const k of Object.keys(D.e).sort()){
     if(!k.startsWith(ym))continue;const e=D.e[k];s.days.push(k);
-    if(e.t==='work'){s.work++;s.hours+=e.h;s.early+=e.early||0;s.ot+=e.h-D.std}else s[e.t]++;
+    s.pd+=plusDelta(e);if(e.t==='work'){s.work++;s.hours+=Math.min(e.h,D.std);s.early+=Math.max(0,D.std-e.h)}else s[e.t]++;
   }
   return s;
 }
+function plusDelta(e){
+  if(e.t==='work')return Math.max(0,e.h-D.std)-(e.np?0:Math.max(0,D.std-e.h));
+  if(e.t==='plus')return -e.h;
+  return 0;
+}
 function balances(){
   let v=+D.vac0||0,p=+D.plus0||0;const f=D.from||'0000';
-  for(const k in D.e){if(k<f)continue;const e=D.e[k];if(e.t==='vac')v--;else if(e.t==='work')p+=e.h-D.std}
+  for(const k in D.e){if(k<f)continue;const e=D.e[k];if(e.t==='vac')v--;p+=plusDelta(e)}
   return{v,p};
 }
 const sg=n=>(n>0?'+':n<0?'−':'')+fmtH(Math.abs(n));
-function dotClass(e){return e.t==='work'?(e.early>0?'early':'work'):e.t}
+function dotClass(e){return e.t==='work'?(e.h<D.std?'early':'work'):e.t}
 function missing(){
   const out=[],d=new Date();
   for(let i=1;i<=14;i++){const x=new Date();x.setDate(d.getDate()-i);
@@ -112,7 +119,7 @@ function calView(){
   let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
   for(let d=1;d<=n;d++){
     const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
-    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
+    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}">${d}${e?`<i class="${dotClass(e)}"></i>`:''}${e&&e.t==='work'?`<small>${fmtH(Math.min(e.h,D.std))}h</small>`:''}</button>`;
   }
   return `<h1>Delovni dnevnik</h1><p class="sub">${new Date().toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</p>
   ${miss.length?`<button class="banner" data-a="day" data-v="${miss[0]}"><span><b>Nevpisani delovni dnevi: ${miss.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>`:''}
@@ -120,7 +127,7 @@ function calView(){
   ${D.e[today]?'':`<button class="btn" style="margin-bottom:14px" data-a="day" data-v="${today}">Vpiši danes</button>`}
   <div class="card"><div class="nav"><button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button><h2 style="margin:0">${MONTHS[m]} ${y}</h2><button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button></div>
   <div class="grid">${['P','T','S','Č','P','S','N'].map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
-  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span></div></div>
+  <div class="legend"><span><i class="work"></i>Delal</span><span><i class="early"></i>Prej odšel</span><span><i class="vac"></i>Dopust</span><span><i class="sick"></i>Bolniška</span><span><i class="plus"></i>Plus ure</span></div></div>
   <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(ymOf(view)))}</div>`;
 }
 function archView(){
@@ -146,10 +153,10 @@ function setView(){
 function monthDetail(ym){
   const s=summary(ym),[y,m]=ym.split('-');
   const list=s.days.map(k=>{const e=D.e[k],d=new Date(k+'T12:00');
-    const txt=e.t==='work'?`${fmtH(e.h)} h${e.early?` · odšel ${fmtH(e.early)} h prej`:''}`:T[e.t];
+    const sf=Math.max(0,D.std-e.h),ov=Math.max(0,e.h-D.std);const txt=e.t==='work'?`${fmtH(Math.min(e.h,D.std))} h${sf?` · odšel ${fmtH(sf)} h prej`:''}${ov?` · +${fmtH(ov)} h v plus`:''}`:e.t==='plus'?`${T.plus} ${fmtH(e.h)} h`:T[e.t];
     return `<button class="row" data-a="day" data-v="${k}"><span><i class="${dotClass(e)}" style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px"></i>${d.toLocaleDateString('sl-SI',{weekday:'short',day:'numeric'})}</span><span>${txt}</span></button>`}).join('')||'<p class="sub">Še nič vpisanega.</p>';
   return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop><h2>${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
-  <p class="sub" style="margin-top:12px">Prej odšel: ${fmtH(s.early)} h · Nad/pod standardom: ${sg(s.ot)} h</p>${list}<div class="gap"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
+  <p class="sub" style="margin-top:12px">Prej odšel: ${fmtH(s.early)} h · Sprememba plus ur: ${sg(s.pd)} h</p>${list}<div class="gap"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
 }
 function sheetHtml(){
   const d=new Date(draftKey+'T12:00'),w=draft.t==='work';
@@ -157,7 +164,8 @@ function sheetHtml(){
   <h2>${d.toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</h2>
   <div class="chips">${Object.entries(T).map(([k,l])=>`<button class="chip ${draft.t===k?'on':''}" data-a="type" data-v="${k}">${l}</button>`).join('')}</div>
   ${w?`<div class="step"><span>Opravljene ure</span><div><button data-a="h" data-v="-0.5">−</button><output>${fmtH(draft.h)} h</output><button data-a="h" data-v="0.5">+</button></div></div>
-  <div class="step"><span>Prej odšel za</span><div><button data-a="early" data-v="-0.5">−</button><output>${fmtH(draft.early)} h</output><button data-a="early" data-v="0.5">+</button></div></div>`:''}
+  <div class="step"><span>Prej odšel za</span><div><button data-a="early" data-v="-0.5">−</button><output>${fmtH(Math.max(0,D.std-draft.h))} h</output><button data-a="early" data-v="0.5">+</button></div></div>
+  ${draft.h<D.std?`<label class="sw" style="padding:8px 0"><input type="checkbox" id="fromPlus" ${draft.np?'':'checked'}> Manjkajoče ure vzemi iz plusa</label>`:''}`:draft.t==='plus'?`<div class="step"><span>Porabljene plus ure</span><div><button data-a="h" data-v="-0.5">−</button><output>${fmtH(draft.h)} h</output><button data-a="h" data-v="0.5">+</button></div></div>`:''}
   <div class="gap"><input type="text" id="note" placeholder="Opomba (neobvezno)" value="${(draft.note||'').replace(/"/g,'&quot;')}">
   <button class="btn" data-a="save">Shrani</button>
   ${D.e[draftKey]?'<button class="btn danger" data-a="del">Odstrani vnos</button>':''}
@@ -176,10 +184,10 @@ document.addEventListener('click',ev=>{
   else if(a==='month'){detail=v;drawSheet()}
   else if(a==='close'){detail=null;drawSheet()}
   else if(a==='cancel'){draft=null;drawSheet()}
-  else if(a==='type'){draft.t=v;drawSheet()}
+  else if(a==='type'){if(v!==draft.t&&(v==='plus'||draft.t==='plus'))draft.h=D.std;draft.t=v;drawSheet()}
   else if(a==='h'){draft.h=Math.max(0,Math.min(24,draft.h+ +v));drawSheet()}
-  else if(a==='early'){const n=Math.max(0,Math.min(D.std,draft.early+ +v));draft.h=Math.max(0,draft.h-(n-draft.early));draft.early=n;drawSheet()}
-  else if(a==='save'){const e={t:draft.t,note:draft.note};if(e.t==='work'){e.h=draft.h;e.early=draft.early}D.e[draftKey]=e;save();draft=null;drawSheet();render()}
+  else if(a==='early'){const cur=Math.max(0,D.std-draft.h),n=Math.max(0,Math.min(D.std,cur+ +v));draft.h=D.std-n;drawSheet()}
+  else if(a==='save'){const e={t:draft.t,note:draft.note};if(e.t==='work'||e.t==='plus')e.h=draft.h;if(e.t==='work'&&draft.np&&draft.h<D.std)e.np=true;D.e[draftKey]=e;save();draft=null;drawSheet();render()}
   else if(a==='del'){delete D.e[draftKey];save();draft=null;drawSheet();render()}
   else if(a==='std'){D.std=Math.max(1,Math.min(24,D.std+ +v));save();render()}
   else if(a==='test'){testNotif()}
@@ -187,6 +195,7 @@ document.addEventListener('click',ev=>{
   else if(a==='import'){const i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=async()=>{try{D=Object.assign(D,JSON.parse(await i.files[0].text()));save();render()}catch(e){alert('Te datoteke ni mogoče prebrati kot varnostno kopijo.')}};i.click()}
 });
 document.addEventListener('change',async ev=>{
+  if(ev.target.id==='fromPlus'){draft.np=!ev.target.checked;return}
   if(ev.target.id==='vac0'||ev.target.id==='plus0'){D[ev.target.id]=parseFloat(ev.target.value)||0;if(!D.from)D.from=keyOf(new Date());save();render()}
   if(ev.target.id==='from'){D.from=ev.target.value;save();render()}
   if(ev.target.id==='rem'){D.rem=ev.target.value;save()}
