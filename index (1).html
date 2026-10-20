@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b3a67">
+<title>Delovni dnevnik</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+/* ───────── Design tokens ───────── */
+:root{
+  --bg:#eef0f5; --card:#fff; --ink:#1c2233; --mute:#6b7388; --line:#e1e5ee;
+  --accent:#2b3a67; --on:#fff; --soft:#f3f5fa;
+  --work:#1f9d6b; --early:#e8a317; --vac:#3b82f6; --sick:#e5484d;
+  --plus:#af52de; --ot:#ff2d92; --hol:#ff6a00; --pay:#f5c542;
+  --warn-bg:#fff4dc; --warn-ink:#6a4a00;
+  --radius:20px; --radius-sm:14px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#121622; --card:#1b2133; --ink:#eef0f7; --mute:#8d96ad; --line:#2a3148;
+  --accent:#8fa4ff; --on:#121622; --soft:#232a40;
+  --warn-bg:#3a2f12; --warn-ink:#ffd98a;
+}}
+
+/* ───────── Base ───────── */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);padding-top:env(safe-area-inset-top);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:520px;margin:0 auto;padding:16px 16px 110px}
+h1{font-size:28px;margin:8px 0 2px;letter-spacing:-.02em}
+h2{font-size:17px;margin:0 0 12px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sub{color:var(--mute);margin:0 0 16px}
+.hint{color:var(--mute);font-size:14px;margin:10px 0 0}
+.cap{text-transform:capitalize}
+
+/* ───────── Building blocks ───────── */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.btn{background:var(--accent);color:var(--on);border-radius:var(--radius-sm);padding:14px 18px;font-weight:600;width:100%}
+.btn.ghost{background:var(--soft);color:var(--ink)}
+.btn.danger{color:var(--sick)}
+.stack{display:grid;gap:8px;margin-top:12px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
+.work{background:var(--work)}.early{background:var(--early)}.vac{background:var(--vac)}
+.sick{background:var(--sick)}.plus{background:var(--plus)}.ot{background:var(--ot)}.hol{background:var(--hol)}
+.pos{color:var(--work)}.neg{color:var(--sick)}
+
+input[type=text],input[type=time],input[type=number],input[type=date]{
+  font:inherit;color:inherit;background:var(--soft);border:0;border-radius:12px;padding:12px;width:100%}
+input[type=number],input[type=date]{width:auto}
+input[type=number]{width:100px;text-align:center}
+.check{display:flex;align-items:center;gap:10px}
+.check input{width:22px;height:22px;accent-color:var(--accent)}
+
+/* Label + control row (settings, sheet) */
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+.field+.field{border-top:1px solid var(--line)}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper button{width:42px;height:42px;border-radius:12px;background:var(--soft);font-size:22px}
+.stepper output{min-width:56px;text-align:center;font-weight:700;font-size:18px}
+
+/* ───────── Home ───────── */
+.banner{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;
+  background:var(--warn-bg);color:var(--warn-ink);border-radius:16px;padding:12px 14px;margin-bottom:14px}
+.balances{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}
+.balances b{display:block;font-size:30px;letter-spacing:-.02em}
+.balances span{font-size:13px;color:var(--mute)}
+.today-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left}
+.today-card small{display:block;color:var(--mute);font-size:13px}
+.today-card strong{font-size:17px}
+
+.month-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.month-nav h2{margin:0}
+.month-nav button{width:40px;height:40px;border-radius:12px;background:var(--soft);font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:12px;color:var(--mute);text-align:center;padding-bottom:4px}
+.day{aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:15px;background:var(--soft)}
+.day.empty{background:none}
+.day.weekend{opacity:.55}
+.day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.day .dot{width:6px;height:6px;margin-top:3px}
+.day small{font-size:10px;color:var(--mute);line-height:1}
+.day.pay,.day.pay.today{background:var(--pay);color:#1c2233;opacity:1}
+.day.pay small{color:#5a4600}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:14px}
+.legend .dot{margin-right:5px}
+.legend .pay-key{width:11px;height:11px;border-radius:3px;background:var(--pay);display:inline-block;margin-right:5px}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.stats b{display:block;font-size:22px}
+.stats span{font-size:12px;color:var(--mute)}
+
+/* ───────── Months list ───────── */
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:14px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+.row .meta{color:var(--mute);font-size:14px}
+.row .lead{display:flex;align-items:center;gap:8px}
+
+/* ───────── Tab bar ───────── */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:center;gap:4px;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.tabs button{flex:1;max-width:160px;padding:8px 4px 6px;border-radius:var(--radius-sm);color:var(--mute);
+  font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button.on{color:var(--accent);background:var(--soft)}
+.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ───────── Bottom sheet ───────── */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,14,25,.5);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:24px 24px 0 0;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.chip{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 6px;border-radius:var(--radius-sm);
+  background:var(--soft);font-weight:600;font-size:14px;border:2px solid transparent}
+.chip.on{border-color:var(--accent)}
+.effect{background:var(--soft);border-radius:12px;padding:10px 12px;margin-top:8px;font-size:14px;color:var(--mute)}
+.effect b{color:var(--ink)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav class="tabs" id="tabs" aria-label="Glavna navigacija"></nav>
+<div id="sheet"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   1. CONSTANTS & STATE
+   ═══════════════════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const MONTHS = ['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
+const TYPES  = {work:'Delal', vac:'Plačan dopust', sick:'Bolniška', plus:'Plus ure'};
+const WEEKDAYS = ['P','T','S','Č','P','S','N'];
+const FIXED_HOLIDAYS = [
+  ['01-01','Novo leto'],['01-02','Novo leto (2. dan)'],['02-08','Prešernov dan'],
+  ['04-27','Dan upora proti okupatorju'],['05-01','Praznik dela'],['05-02','Praznik dela (2. dan)'],
+  ['06-25','Dan državnosti'],['08-15','Marijino vnebovzetje'],['10-31','Dan reformacije'],
+  ['11-01','Dan spomina na mrtve'],['12-25','Božič'],['12-26','Dan samostojnosti in enotnosti']
+];
+const ICONS = {
+  cal:  '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  arch: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  set:  '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'
+};
+const TABS = [['cal','Koledar'],['arch','Meseci'],['set','Nastavitve']];
+
+/* Persistent data. Entries: D.e['YYYY-MM-DD'] = {t, h?, note, np?} */
+let D = Object.assign(
+  {e:{}, std:8, rem:'18:00', remOn:false, lastN:'', vac0:0, plus0:0, from:''},
+  JSON.parse(localStorage.getItem('wl') || '{}')
+);
+const save = () => localStorage.setItem('wl', JSON.stringify(D));
+
+/* UI state */
+let tab = 'cal';
+let viewMonth = new Date(); viewMonth.setDate(1);
+let draft = null, draftKey = null;   // entry being edited in the sheet
+let detailMonth = null;              // month opened from the "Meseci" list
+
+/* ═══════════════════════════════════════════════════════════
+   2. HELPERS
+   ═══════════════════════════════════════════════════════════ */
+const pad  = n => String(n).padStart(2,'0');
+const dayKey   = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const monthKey = d => d.getFullYear()+'-'+pad(d.getMonth()+1);
+const fmtH = h => (Math.round(h*10)/10).toString().replace(/\.0$/,'');
+const signed = n => (n>0?'+':n<0?'−':'')+fmtH(Math.abs(n));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const atNoon = k => new Date(k+'T12:00');
+const longDate = (d, opts) => d.toLocaleDateString('sl-SI', opts);
+
+/* ═══════════════════════════════════════════════════════════
+   3. CALENDAR RULES (holidays, days off, pay day)
+   ═══════════════════════════════════════════════════════════ */
+function easterSunday(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,dd=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+    g=Math.floor((b-f+1)/3),h=(19*a+b-dd-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,
+    m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return new Date(y,mo-1,da);
+}
+const holidayCache = {};
+function holidaysOf(y){
+  if(holidayCache[y]) return holidayCache[y];
+  const E = easterSunday(y), at = n => { const x=new Date(E); x.setDate(x.getDate()+n); return dayKey(x); };
+  const out = {};
+  FIXED_HOLIDAYS.forEach(([md,name]) => out[y+'-'+md] = name);
+  out[at(0)]  = 'Velikonočna nedelja';
+  out[at(1)]  = 'Velikonočni ponedeljek';
+  out[at(49)] = 'Binkoštna nedelja';
+  return holidayCache[y] = out;
+}
+const holidayName = k => holidaysOf(+k.slice(0,4))[k] || null;
+const isOff = k => { const w = atNoon(k).getDay(); return w===0 || w===6 || !!holidayName(k); };
+/* 15th of the month, moved to the nearest working day (Sat → 14th, Sun → 16th) */
+const payDay = (y,m) => { const w = new Date(y,m,15).getDay(); return w===6 ? 14 : w===0 ? 16 : 15; };
+
+/* ═══════════════════════════════════════════════════════════
+   4. CALCULATIONS
+   ═══════════════════════════════════════════════════════════ */
+/* How much one entry changes the plus-hours balance */
+function plusDelta(e, k){
+  if(k && isOff(k)) return e.t==='work' ? e.h : 0;
+  if(e.t==='work')  return Math.max(0, e.h-D.std) - (e.np ? 0 : Math.max(0, D.std-e.h));
+  if(e.t==='plus')  return -e.h;
+  return 0;
+}
+/* Totals for one month ('YYYY-MM') */
+function summary(ym){
+  const s = {work:0, hours:0, vac:0, sick:0, early:0, ot:0, plus:0, pd:0, extra:0, days:[]};
+  for(const k of Object.keys(D.e).sort()){
+    if(!k.startsWith(ym)) continue;
+    const e = D.e[k], off = isOff(k);
+    s.days.push(k);
+    s.pd += plusDelta(e,k);
+    if(e.t==='work'){
+      if(off) s.extra += e.h;
+      else { s.work++; s.hours += Math.min(e.h, D.std); s.early += Math.max(0, D.std-e.h); }
+    } else if(!off) s[e.t]++;
+  }
+  return s;
+}
+/* Remaining vacation days and plus hours, counted from D.from */
+function balances(){
+  let v = +D.vac0 || 0, p = +D.plus0 || 0;
+  const from = D.from || '0000';
+  for(const k in D.e){
+    if(k < from) continue;
+    const e = D.e[k];
+    if(e.t==='vac' && !isOff(k)) v--;
+    p += plusDelta(e,k);
+  }
+  return {v, p};
+}
+/* Working days in the last 14 days with no entry (newest first) */
+function missingDays(){
+  const out = [], now = new Date();
+  for(let i=1;i<=14;i++){
+    const x = new Date(); x.setDate(now.getDate()-i);
+    const k = dayKey(x);
+    if(!isOff(k) && !D.e[k]) out.push(k);
+  }
+  return out;
+}
+/* Colour class for an entry's dot */
+function dotClass(e,k){
+  if(e.t!=='work') return e.t;
+  if(isOff(k)) return 'ot';
+  return e.h<D.std ? 'early' : e.h>D.std ? 'ot' : 'work';
+}
+/* One-line description of an entry */
+function entryLabel(k,e){
+  if(e.t==='plus') return `${TYPES.plus} ${fmtH(e.h)} h`;
+  if(e.t!=='work') return TYPES[e.t];
+  const off = isOff(k);
+  const early = off ? 0 : Math.max(0, D.std-e.h);
+  const over  = off ? e.h : Math.max(0, e.h-D.std);
+  return `${fmtH(off ? e.h : Math.min(e.h,D.std))} h`
+    + (early ? ` · odšel ${fmtH(early)} h prej` : '')
+    + (over  ? ` · +${fmtH(over)} h v plus` : '');
+}
+/* Plain-language effect of the entry being edited */
+function effectText(k,d){
+  if(d.t==='vac')  return isOff(k) ? '' : 'Porabi <b>1 dan</b> dopusta';
+  if(d.t==='sick') return '';
+  const p = plusDelta(d,k);
+  if(p>0) return `Plus ure: <b>+${fmtH(p)} h</b>`;
+  if(p<0) return `Plus ure: <b>−${fmtH(-p)} h</b>`;
+  return d.t==='work' ? 'Brez vpliva na plus ure' : '';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   5. VIEWS
+   ═══════════════════════════════════════════════════════════ */
+function render(){
+  $('#tabs').innerHTML = TABS.map(([k,l]) =>
+    `<button class="${tab===k?'on':''}" data-a="tab" data-v="${k}" ${tab===k?'aria-current="page"':''}>
+       <svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${l}</button>`).join('');
+  $('#app').innerHTML = tab==='cal' ? calendarView() : tab==='arch' ? monthsView() : settingsView();
+}
+
+function statsHtml(s){
+  const cell = (n,l) => `<div><b>${n}</b><span>${l}</span></div>`;
+  return `<div class="stats">${cell(s.work,'dni dela')}${cell(fmtH(s.hours),'ur')}${cell(s.vac,'dopust')}${cell(s.sick,'bolniška')}</div>`;
+}
+
+/* — Calendar (home) — */
+function calendarView(){
+  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  const offset = (new Date(y,m,1).getDay()+6)%7, daysIn = new Date(y,m+1,0).getDate();
+  const today = dayKey(new Date()), missing = missingDays(), bal = balances(), pay = payDay(y,m);
+
+  let cells = '<div class="day empty"></div>'.repeat(offset);
+  for(let d=1; d<=daysIn; d++){
+    const k = y+'-'+pad(m+1)+'-'+pad(d), e = D.e[k], wd = new Date(y,m,d).getDay();
+    const marker = e ? `<i class="dot ${dotClass(e,k)}"></i>` : holidayName(k) ? '<i class="dot hol"></i>' : '';
+    const hours  = e && e.t==='work' ? `<small>${fmtH(e.h)}h</small>` : '';
+    cells += `<button class="day ${wd%6===0?'weekend':''} ${k===today?'today':''} ${d===pay?'pay':''}"
+      data-a="day" data-v="${k}" title="${esc(holidayName(k)||'')}">${d}${marker}${hours}</button>`;
+  }
+
+  const todayE = D.e[today];
+  const todayCard = `<button class="card today-card" data-a="day" data-v="${today}">
+      <span><small class="cap">${longDate(new Date(),{weekday:'long',day:'numeric',month:'long'})}</small>
+      <strong>${todayE ? entryLabel(today,todayE) : 'Danes še ni vpisano'}</strong></span>
+      <b style="color:var(--accent)">${todayE ? 'Uredi' : 'Vpiši'}</b></button>`;
+
+  const legend = [['work','Delal'],['early','Prej odšel'],['vac','Dopust'],['sick','Bolniška'],['plus','Plus ure'],['ot','Nadure'],['hol','Praznik']]
+    .map(([c,l]) => `<span><i class="dot ${c}"></i>${l}</span>`).join('')
+    + '<span><i class="pay-key"></i>Izplačilo</span>';
+
+  return `<h1>Delovni dnevnik</h1><p class="sub">Pregled tvojih ur in dopusta</p>
+  ${missing.length ? `<button class="banner" data-a="day" data-v="${missing[0]}">
+      <span><b>Nevpisani delovni dnevi: ${missing.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>` : ''}
+  <div class="card balances">
+    <div><b class="${bal.v<0?'neg':''}">${fmtH(bal.v)}</b><span>dni dopusta ostalo</span></div>
+    <div><b class="${bal.p<0?'neg':'pos'}">${signed(bal.p)} h</b><span>${bal.p<0?'ur za nadoknaditi':'ur v plusu'}</span></div>
+  </div>
+  ${todayCard}
+  <div class="card">
+    <div class="month-nav">
+      <button data-a="mo" data-v="-1" aria-label="Prejšnji mesec">‹</button>
+      <h2 class="cap">${MONTHS[m]} ${y}</h2>
+      <button data-a="mo" data-v="1" aria-label="Naslednji mesec">›</button>
+    </div>
+    <div class="grid">${WEEKDAYS.map(x=>`<div class="dow">${x}</div>`).join('')}${cells}</div>
+    <div class="legend">${legend}</div>
+  </div>
+  <div class="card"><h2>Ta mesec</h2>${statsHtml(summary(monthKey(viewMonth)))}</div>`;
+}
+
+/* — Months archive — */
+function monthsView(){
+  const months = new Set(Object.keys(D.e).map(k => k.slice(0,7)));
+  months.add(monthKey(new Date()));
+  const rows = [...months].sort().reverse().map(ym => {
+    const s = summary(ym), [y,m] = ym.split('-');
+    const meta = `${s.work} dni · ${fmtH(s.hours)} h${s.vac?` · ${s.vac} dopust`:''}${s.sick?` · ${s.sick} bolniška`:''}`;
+    return `<button class="row" data-a="month" data-v="${ym}">
+      <span><b class="cap">${MONTHS[m-1]} ${y}</b><br><span class="meta">${meta}</span></span><span>›</span></button>`;
+  }).join('');
+  return `<h1>Meseci</h1><p class="sub">Vsak mesec je shranjen tukaj s seštevki.</p><div class="card">${rows}</div>`;
+}
+
+/* — Settings — */
+function settingsView(){
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const permText = ({granted:'dovoljena',denied:'blokirana',default:'še ne dovoljena',unsupported:'ni podprta'})[perm] || perm;
+  return `<h1>Nastavitve</h1><p class="sub">Podatki ostanejo na tej napravi.</p>
+
+  <div class="card"><h2>Začetna stanja</h2>
+    <label class="field"><span>Preostali dnevi dopusta</span><input type="number" id="vac0" step="0.5" value="${D.vac0}"></label>
+    <label class="field"><span>Ure v plusu<br><small class="hint">minus, če jih dolgujem</small></span><input type="number" id="plus0" step="0.5" value="${D.plus0}"></label>
+    <label class="field"><span>Šteje od</span><input type="date" id="from" value="${D.from}"></label>
+    <p class="hint">Vnesi stanja, kot so na ta datum. Dnevi, ki jih vpišeš od takrat naprej, jih posodobijo samodejno: ure nad standardnim dnevom gredo v plus, ure pod njim se odštejejo, vsak dan dopusta pa se odšteje od dopusta.</p>
+  </div>
+
+  <div class="card"><h2>Standardni delovnik</h2>
+    <div class="field"><span>Ur na dan</span>
+      <div class="stepper"><button data-a="std" data-v="-0.5" aria-label="Manj">−</button><output>${fmtH(D.std)} h</output><button data-a="std" data-v="0.5" aria-label="Več">+</button></div>
+    </div>
+  </div>
+
+  <div class="card"><h2>Dnevni opomnik</h2>
+    <label class="check"><input type="checkbox" id="remOn" ${D.remOn?'checked':''}> Opomni me, če danes nisem vpisal</label>
+    <div class="stack"><input type="time" id="rem" value="${D.rem}" aria-label="Ura opomnika"></div>
+    <p class="hint">Obvestila: ${permText}. Opomniki se sprožijo, ko je aplikacija odprta ali jo prebudi telefon; oranžna oznaka na koledarju vedno pokaže nevpisane dni.</p>
+    <div class="stack"><button class="btn ghost" data-a="test">Pošlji testno obvestilo</button></div>
+  </div>
+
+  <div class="card"><h2>Varnostna kopija</h2>
+    <div class="stack" style="margin-top:0"><button class="btn ghost" data-a="export">Izvozi podatke</button><button class="btn ghost" data-a="import">Uvozi podatke</button></div>
+  </div>`;
+}
+
+/* — Month detail sheet — */
+function monthDetailHtml(ym){
+  const s = summary(ym), [y,m] = ym.split('-');
+  const list = s.days.map(k => {
+    const e = D.e[k];
+    return `<button class="row" data-a="day" data-v="${k}">
+      <span class="lead"><i class="dot ${dotClass(e,k)}"></i>${longDate(atNoon(k),{weekday:'short',day:'numeric'})}</span>
+      <span class="meta">${entryLabel(k,e)}</span></button>`;
+  }).join('') || '<p class="sub">Še nič vpisanega.</p>';
+  return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop>
+    <h2 class="cap">${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
+    <p class="hint" style="margin:12px 0">Prej odšel: ${fmtH(s.early)} h · Sprememba plus ur: ${signed(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>
+    ${list}<div class="stack"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
+}
+
+/* — Day entry sheet — */
+function entrySheetHtml(){
+  const isWork = draft.t==='work', off = isOff(draftKey), name = holidayName(draftKey);
+  const stepper = (label, action, value) => `<div class="field"><span>${label}</span>
+    <div class="stepper"><button data-a="${action}" data-v="-0.5" aria-label="Manj">−</button><output>${fmtH(value)} h</output><button data-a="${action}" data-v="0.5" aria-label="Več">+</button></div></div>`;
+  const effect = effectText(draftKey, draft);
+
+  return `<div class="sheet-bg" data-a="cancel"><div class="sheet" data-stop>
+  <h2 class="cap" style="font-size:20px;margin-bottom:4px">${longDate(atNoon(draftKey),{weekday:'long',day:'numeric',month:'long'})}</h2>
+  ${off ? `<p class="hint" style="margin:0 0 4px">${name ? esc(name)+' – praznik, dela prost dan. ' : 'Vikend. '}Dopust in plus ure se ne porabljajo. Če delaš, gredo vse ure v plus.</p>` : ''}
+  <div class="chips">${Object.entries(TYPES).map(([k,l]) =>
+    `<button class="chip ${draft.t===k?'on':''}" data-a="type" data-v="${k}"><i class="dot ${k==='work'?'work':k}"></i>${l}</button>`).join('')}</div>
+  ${isWork ? stepper('Opravljene ure','h',draft.h) + stepper('Prej odšel za','early',Math.max(0,D.std-draft.h))
+      + (draft.h<D.std ? `<label class="check" style="padding:8px 0"><input type="checkbox" id="fromPlus" ${draft.np?'':'checked'}> Manjkajoče ure vzemi iz plusa</label>` : '')
+    : draft.t==='plus' ? stepper('Porabljene plus ure','h',draft.h) : ''}
+  ${effect ? `<div class="effect">${effect}</div>` : ''}
+  <div class="stack">
+    <input type="text" id="note" placeholder="Opomba (neobvezno)" value="${esc(draft.note||'')}">
+    <button class="btn" data-a="save">Shrani</button>
+    ${D.e[draftKey] ? '<button class="btn danger ghost" data-a="del">Odstrani vnos</button>' : ''}
+    <button class="btn ghost" data-a="cancel">Prekliči</button>
+  </div></div></div>`;
+}
+function drawSheet(){
+  $('#sheet').innerHTML = detailMonth ? monthDetailHtml(detailMonth) : draft ? entrySheetHtml() : '';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   6. ACTIONS (all taps go through data-a / data-v)
+   ═══════════════════════════════════════════════════════════ */
+const ACTIONS = {
+  tab:  v => { tab = v; render(); },
+  mo:   v => { viewMonth.setMonth(viewMonth.getMonth() + +v); render(); },
+  day:  v => { draftKey = v; draft = Object.assign({t:'work', h:D.std, early:0, note:''}, D.e[v]); detailMonth = null; drawSheet(); },
+  month:v => { detailMonth = v; drawSheet(); },
+  close:()=> { detailMonth = null; drawSheet(); },
+  cancel:()=>{ draft = null; drawSheet(); },
+  type: v => { if(v!==draft.t && (v==='plus' || draft.t==='plus')) draft.h = D.std; draft.t = v; drawSheet(); },
+  h:    v => { draft.h = Math.max(0, Math.min(24, draft.h + +v)); drawSheet(); },
+  early:v => { const left = Math.max(0, Math.min(D.std, Math.max(0,D.std-draft.h) + +v)); draft.h = D.std - left; drawSheet(); },
+  save: ()=> {
+    const e = {t:draft.t, note:draft.note};
+    if(e.t==='work' || e.t==='plus') e.h = draft.h;
+    if(e.t==='work' && draft.np && draft.h<D.std) e.np = true;
+    D.e[draftKey] = e; save(); draft = null; drawSheet(); render();
+  },
+  del:  ()=> { delete D.e[draftKey]; save(); draft = null; drawSheet(); render(); },
+  std:  v => { D.std = Math.max(1, Math.min(24, D.std + +v)); save(); render(); },
+  test: ()=> sendTestNotification(),
+  export: ()=> {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(D)], {type:'application/json'}));
+    a.download = 'worklog-backup.json'; a.click();
+  },
+  import: ()=> {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = '.json';
+    i.onchange = async () => {
+      try { D = Object.assign(D, JSON.parse(await i.files[0].text())); save(); render(); }
+      catch(e){ alert('Te datoteke ni mogoče prebrati kot varnostno kopijo.'); }
+    };
+    i.click();
+  }
+};
+
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-a]'); if(!t) return;
+  if(ev.target.closest('[data-stop]') && t.classList.contains('sheet-bg')) return; // tap inside sheet ≠ close
+  if(draft && $('#note')) draft.note = $('#note').value;                           // keep typed note
+  ACTIONS[t.dataset.a]?.(t.dataset.v);
+});
+document.addEventListener('keydown', ev => {
+  if(ev.key==='Escape' && (draft || detailMonth)){ draft ? ACTIONS.cancel() : ACTIONS.close(); }
+});
+document.addEventListener('change', async ev => {
+  const id = ev.target.id;
+  if(id==='fromPlus'){ draft.np = !ev.target.checked; drawSheet(); return; }
+  if(id==='vac0' || id==='plus0'){ D[id] = parseFloat(ev.target.value) || 0; if(!D.from) D.from = dayKey(new Date()); save(); render(); }
+  if(id==='from'){ D.from = ev.target.value; save(); render(); }
+  if(id==='rem'){ D.rem = ev.target.value; save(); }
+  if(id==='remOn'){
+    D.remOn = ev.target.checked;
+    if(D.remOn && 'Notification' in window && Notification.permission==='default') await Notification.requestPermission();
+    save(); render(); checkReminder();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   7. NOTIFICATIONS & REMINDER
+   ═══════════════════════════════════════════════════════════ */
+async function sendTestNotification(){
+  try{
+    const N = window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform() && Capacitor.Plugins.LocalNotifications;
+    if(N){
+      let p = await N.checkPermissions(); if(p.display!=='granted') p = await N.requestPermissions();
+      if(p.display!=='granted'){ alert('Obvestila so blokirana. Dovoli jih v nastavitvah Androida za to aplikacijo.'); return; }
+      await N.schedule({notifications:[{id:999, title:'Delovni dnevnik', body:'Test: opomniki delujejo.', schedule:{at:new Date(Date.now()+3000)}}]});
+      return;
+    }
+    if(!('Notification' in window)){ alert('Ta brskalnik ne podpira obvestil.'); return; }
+    let p = Notification.permission; if(p==='default') p = await Notification.requestPermission();
+    if(p!=='granted'){ alert('Obvestila so blokirana. Dovoli jih v nastavitvah brskalnika za to stran.'); return; }
+    const o = {body:'Test: opomniki delujejo.', icon:'icon.svg'};
+    const r = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    r ? r.showNotification('Delovni dnevnik', o) : new Notification('Delovni dnevnik', o);
+  }catch(e){ alert('Brskalnik ni mogel prikazati obvestila.'); }
+}
+async function checkReminder(){
+  if(!D.remOn || !('Notification' in window) || Notification.permission!=='granted') return;
+  const now = new Date(), today = dayKey(now), hm = pad(now.getHours())+':'+pad(now.getMinutes());
+  if(D.e[today] || D.lastN===today || hm<D.rem || isOff(today)) return;
+  D.lastN = today; save();
+  const o = {body:'Danes še nisi vpisal delovnega časa.', icon:'icon.svg', tag:'wl'};
+  try{ const r = await navigator.serviceWorker.ready; r.showNotification('Delovni dnevnik', o); }
+  catch(e){ new Notification('Delovni dnevnik', o); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. STARTUP
+   ═══════════════════════════════════════════════════════════ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(r => {
+    if(r.periodicSync) navigator.permissions.query({name:'periodic-background-sync'})
+      .then(p => { if(p.state==='granted') r.periodicSync.register('wl-remind', {minInterval:3600e3}); }).catch(()=>{});
+    navigator.serviceWorker.addEventListener('message', e => { if(e.data==='remind') checkReminder(); });
+  }).catch(()=>{});
+}
+setInterval(checkReminder, 60000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden){ render(); checkReminder(); } });
+render(); checkReminder();
+</script>
+</body>
+</html>
