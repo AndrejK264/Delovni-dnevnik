@@ -57,7 +57,7 @@ input[type=text],input[type=time],input[type=number],input[type=date]{font:inher
 .sw input{width:22px;height:22px;accent-color:var(--accent)}
 .gap{display:grid;gap:8px;margin-top:12px}
 .bal{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.bal b{display:block;font-size:30px;letter-spacing:-.02em}.bal span{font-size:13px;color:var(--mute)}.pos{color:var(--work)}.neg{color:var(--sick)}
-.plus{background:#af52de}.ot{background:#ff2d92}.hol{background:#14b8a6}.chip{font-size:12px;line-height:1.15}
+.plus{background:#af52de}.ot{background:#ff2d92}.hol{background:#14b8a6}.day.pay{background:#f5c542;color:#1c2233;opacity:1}.day.pay small{color:#5a4600}.day.pay.today{background:#f5c542;color:#1c2233;box-shadow:inset 0 0 0 2px var(--accent)}.chip{font-size:12px;line-height:1.15}
 .chips{grid-template-columns:repeat(2,1fr)}
 </style>
 </head>
@@ -125,13 +125,14 @@ function render(){
 function statsHtml(s){
   return `<div class="stats"><div><b>${s.work}</b><span>dni dela</span></div><div><b>${fmtH(s.hours)}</b><span>ur</span></div><div><b>${s.vac}</b><span>dopust</span></div><div><b>${s.sick}</b><span>bolniška</span></div></div>`;
 }
+const payDay=(y,m)=>{const w=new Date(y,m,15).getDay();return w===6?14:w===0?16:15};
 function calView(){
   const y=view.getFullYear(),m=view.getMonth(),first=(new Date(y,m,1).getDay()+6)%7,n=new Date(y,m+1,0).getDate();
-  const today=keyOf(new Date()),miss=missing(),b=balances();
+  const today=keyOf(new Date()),miss=missing(),b=balances(),pdy=payDay(y,m);
   let cells='';for(let i=0;i<first;i++)cells+='<div class="day empty"></div>';
   for(let d=1;d<=n;d++){
     const k=y+'-'+pad(m+1)+'-'+pad(d),e=D.e[k],wd=new Date(y,m,d).getDay();
-    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''}" data-a="day" data-v="${k}" title="${isHol(k)||''}">${d}${e?`<i class="${dotClass(e,k)}"></i>`:isHol(k)?'<i class="hol"></i>':''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
+    cells+=`<button class="day ${wd%6===0?'we':''} ${k===today?'today':''} ${d===pdy?'pay':''}" data-a="day" data-v="${k}" title="${isHol(k)||''}">${d}${e?`<i class="${dotClass(e,k)}"></i>`:isHol(k)?'<i class="hol"></i>':''}${e&&e.t==='work'?`<small>${fmtH(e.h)}h</small>`:''}</button>`;
   }
   return `<h1>Delovni dnevnik</h1><p class="sub">${new Date().toLocaleDateString('sl-SI',{weekday:'long',day:'numeric',month:'long'})}</p>
   ${miss.length?`<button class="banner" data-a="day" data-v="${miss[0]}"><span><b>Nevpisani delovni dnevi: ${miss.length}</b><br>Tapni za vnos zadnjega</span><b>Vpiši</b></button>`:''}
