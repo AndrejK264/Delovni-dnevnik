@@ -99,6 +99,9 @@ input[type=number]{width:100px;text-align:center}
 .row:last-child{border:0}
 .row .meta{color:var(--mute);font-size:14px}
 .row .lead{display:flex;align-items:center;gap:8px}
+.row .lead{flex:none;white-space:nowrap}
+.row .note{flex:1 1 0;min-width:0;font-size:13px;color:var(--mute);font-style:italic;overflow-wrap:anywhere}
+.row .meta{text-align:right;flex:none;max-width:45%}
 
 /* ───────── Tab bar ───────── */
 .tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
@@ -379,8 +382,10 @@ function monthDetailHtml(ym){
   const s = summary(ym), [y,m] = ym.split('-');
   const list = s.days.map(k => {
     const e = D.e[k];
+    const note = (e.note||'').trim();
     return `<button class="row" data-a="day" data-v="${k}">
       <span class="lead"><i class="dot ${dotClass(e,k)}"></i>${longDate(atNoon(k),{weekday:'short',day:'numeric'})}</span>
+      ${note ? `<span class="note">${esc(note)}</span>` : '<span style="flex:1"></span>'}
       <span class="meta">${entryLabel(k,e)}</span></button>`;
   }).join('') || '<p class="sub">Še nič vpisanega.</p>';
   return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop>
