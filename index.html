@@ -14,6 +14,7 @@
   --accent:#2b3a67; --on:#fff; --soft:#f3f5fa;
   --work:#1f9d6b; --early:#e8a317; --vac:#3b82f6; --sick:#e5484d;
   --plus:#af52de; --ot:#ff2d92; --hol:#ff6a00; --pay:#f5c542;
+  --am:#38bdf8; --pm:#818cf8;
   --warn-bg:#fff4dc; --warn-ink:#6a4a00;
   --radius:20px; --radius-sm:14px;
 }
@@ -83,10 +84,16 @@ input[type=number]{width:100px;text-align:center}
 .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
 .day .dot{width:6px;height:6px;margin-top:3px}
 .day small{font-size:10px;color:var(--mute);line-height:1}
+.day{position:relative}
+.day.sh-am::after,.day.sh-pm::after{content:"";position:absolute;left:22%;right:22%;bottom:3px;height:3px;border-radius:2px}
+.day.sh-am::after{background:var(--am)}
+.day.sh-pm::after{background:var(--pm)}
 .day.pay,.day.pay.today{background:var(--pay);color:#1c2233;opacity:1}
 .day.pay small{color:#5a4600}
 .legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:14px}
 .legend .dot{margin-right:5px}
+.legend .sw{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:5px}
+.legend .sw.sh-am{background:var(--am)}.legend .sw.sh-pm{background:var(--pm)}
 .legend .pay-key{width:11px;height:11px;border-radius:3px;background:var(--pay);display:inline-block;margin-right:5px}
 
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
@@ -151,7 +158,7 @@ const TABS = [['cal','Koledar'],['arch','Meseci'],['set','Nastavitve']];
 
 /* Persistent data. Entries: D.e['YYYY-MM-DD'] = {t, h?, note, np?} */
 let D = Object.assign(
-  {e:{}, std:8, rem:'18:00', remOn:false, lastN:'', vac0:0, plus0:0, from:''},
+  {e:{}, std:8, rem:'18:00', remOn:false, lastN:'', vac0:0, plus0:0, from:'', shMode:'two', shShow:false, shRef:''},
   JSON.parse(localStorage.getItem('wl') || '{}')
 );
 const save = () => localStorage.setItem('wl', JSON.stringify(D));
@@ -198,6 +205,17 @@ const holidayName = k => holidaysOf(+k.slice(0,4))[k] || null;
 const isOff = k => { const w = atNoon(k).getDay(); return w===0 || w===6 || !!holidayName(k); };
 /* 15th of the month, moved to the nearest working day (Sat → 14th, Sun → 16th) */
 const payDay = (y,m) => { const w = new Date(y,m,15).getDay(); return w===6 ? 14 : w===0 ? 16 : 15; };
+
+/* Shifts: 'one' = always morning, 'two' = morning/afternoon alternate weekly.
+   D.shRef = Monday of any week that is a MORNING week. */
+const mondayOf = k => { const d = atNoon(k); d.setDate(d.getDate() - (d.getDay()+6)%7); return dayKey(d); };
+const ensureRef = () => { if(!D.shRef) D.shRef = mondayOf(dayKey(new Date())); };
+function shiftOf(k){
+  if(D.shMode!=='two') return 'am';
+  const w = Math.round((atNoon(mondayOf(k)) - atNoon(D.shRef || mondayOf(k))) / (7*864e5));
+  return ((w%2)+2)%2===0 ? 'am' : 'pm';
+}
+const shiftClass = k => (D.shShow && !isOff(k)) ? 'sh-'+shiftOf(k) : '';
 
 /* ═══════════════════════════════════════════════════════════
    4. CALCULATIONS
@@ -299,7 +317,7 @@ function calendarView(){
     const k = y+'-'+pad(m+1)+'-'+pad(d), e = D.e[k], wd = new Date(y,m,d).getDay();
     const marker = e ? `<i class="dot ${dotClass(e,k)}"></i>` : holidayName(k) ? '<i class="dot hol"></i>' : '';
     const hours  = e && e.t==='work' ? `<small>${fmtH(e.h)}h</small>` : '';
-    cells += `<button class="day ${wd%6===0?'weekend':''} ${k===today?'today':''} ${d===pay?'pay':''}"
+    cells += `<button class="day ${wd%6===0?'weekend':''} ${k===today?'today':''} ${d===pay?'pay':''} ${shiftClass(k)}"
       data-a="day" data-v="${k}" title="${esc(holidayName(k)||'')}">${d}${marker}${hours}</button>`;
   }
 
@@ -311,7 +329,8 @@ function calendarView(){
 
   const legend = [['work','Delal'],['early','Prej odšel'],['vac','Dopust'],['sick','Bolniška'],['plus','Plus ure'],['ot','Nadure'],['hol','Praznik']]
     .map(([c,l]) => `<span><i class="dot ${c}"></i>${l}</span>`).join('')
-    + '<span><i class="pay-key"></i>Izplačilo</span>';
+    + '<span><i class="pay-key"></i>Izplačilo</span>'
+    + (D.shShow ? '<span><i class="sw sh-am"></i>Dopoldne</span>' + (D.shMode==='two' ? '<span><i class="sw sh-pm"></i>Popoldne</span>' : '') : '');
 
   return `<h1>Delovni dnevnik</h1><p class="sub">Pregled tvojih ur in dopusta</p>
   ${missing.length ? `<button class="banner" data-a="day" data-v="${missing[0]}">
@@ -348,6 +367,7 @@ function monthsView(){
 
 /* — Settings — */
 function settingsView(){
+  ensureRef(); save();
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   const permText = ({granted:'dovoljena',denied:'blokirana',default:'še ne dovoljena',unsupported:'ni podprta'})[perm] || perm;
   return `<h1>Nastavitve</h1><p class="sub">Podatki ostanejo na tej napravi.</p>
@@ -363,6 +383,20 @@ function settingsView(){
     <div class="field"><span>Ur na dan</span>
       <div class="stepper"><button data-a="std" data-v="-0.5" aria-label="Manj">−</button><output>${fmtH(D.std)} h</output><button data-a="std" data-v="0.5" aria-label="Več">+</button></div>
     </div>
+  </div>
+
+  <div class="card"><h2>Izmene</h2>
+    <div class="chips" style="margin-top:0">
+      <button class="chip ${D.shMode==='one'?'on':''}" data-a="shMode" data-v="one">Enosmensko</button>
+      <button class="chip ${D.shMode==='two'?'on':''}" data-a="shMode" data-v="two">Dvosmensko</button>
+    </div>
+    ${D.shMode==='two' ? `<div class="field"><span>Ta teden delam</span></div>
+    <div class="chips" style="margin-top:0">
+      <button class="chip ${shiftOf(dayKey(new Date()))==='am'?'on':''}" data-a="shNow" data-v="am"><i class="dot" style="background:var(--am)"></i>Dopoldne</button>
+      <button class="chip ${shiftOf(dayKey(new Date()))==='pm'?'on':''}" data-a="shNow" data-v="pm"><i class="dot" style="background:var(--pm)"></i>Popoldne</button>
+    </div>` : ''}
+    <label class="check"><input type="checkbox" id="shShow" ${D.shShow?'checked':''}> Prikaži izmene v koledarju</label>
+    <p class="hint">${D.shMode==='two' ? 'Dvosmensko: en teden dopoldne, naslednji popoldne in tako naprej.' : 'Enosmensko: vedno dopoldne.'}</p>
   </div>
 
   <div class="card"><h2>Dnevni opomnik</h2>
@@ -442,6 +476,8 @@ const ACTIONS = {
   },
   del:  ()=> { delete D.e[draftKey]; save(); draft = null; drawSheet(); render(); },
   std:  v => { D.std = Math.max(1, Math.min(24, D.std + +v)); save(); render(); },
+  shMode: v => { D.shMode = v; ensureRef(); save(); render(); },
+  shNow: v => { const mon = mondayOf(dayKey(new Date())); if(v==='am') D.shRef = mon; else { const d = atNoon(mon); d.setDate(d.getDate()-7); D.shRef = dayKey(d); } save(); render(); },
   test: ()=> sendTestNotification(),
   export: ()=> {
     const a = document.createElement('a');
@@ -471,6 +507,7 @@ document.addEventListener('change', async ev => {
   const id = ev.target.id;
   if(id==='fromPlus'){ draft.np = !ev.target.checked; drawSheet(); return; }
   if(id==='vac0' || id==='plus0'){ D[id] = parseFloat(ev.target.value) || 0; if(!D.from) D.from = dayKey(new Date()); save(); render(); }
+  if(id==='shShow'){ D.shShow = ev.target.checked; ensureRef(); save(); render(); }
   if(id==='from'){ D.from = ev.target.value; save(); render(); }
   if(id==='rem'){ D.rem = ev.target.value; save(); }
   if(id==='remOn'){
