@@ -227,7 +227,7 @@ function plusDelta(e, k){
 }
 /* Totals for one month ('YYYY-MM') */
 function summary(ym){
-  const s = {work:0, hours:0, vac:0, sick:0, early:0, ot:0, plus:0, pd:0, extra:0, days:[]};
+  const s = {work:0, hours:0, vac:0, sick:0, early:0, fromPlus:0, ot:0, plus:0, pd:0, extra:0, days:[]};
   for(const k of Object.keys(D.e).sort()){
     if(!k.startsWith(ym)) continue;
     const e = D.e[k], off = isOff(k);
@@ -235,7 +235,12 @@ function summary(ym){
     s.pd += plusDelta(e,k);
     if(e.t==='work'){
       if(off) s.extra += e.h;
-      else { s.work++; s.hours += Math.min(e.h, D.std); s.early += Math.max(0, D.std-e.h); }
+      else {
+        s.work++;
+        const miss = Math.max(0, D.std-e.h);
+        if(miss && !e.np){ s.hours += D.std; s.fromPlus += miss; }   // manjkajoče ure iz plusa → dan šteje kot poln
+        else { s.hours += Math.min(e.h, D.std); s.early += miss; }
+      }
     } else if(!off) s[e.t]++;
   }
   return s;
@@ -275,8 +280,9 @@ function entryLabel(k,e){
   const off = isOff(k);
   const early = off ? 0 : Math.max(0, D.std-e.h);
   const over  = off ? e.h : Math.max(0, e.h-D.std);
-  return `${fmtH(off ? e.h : Math.min(e.h,D.std))} h`
-    + (early ? ` · odšel ${fmtH(early)} h prej` : '')
+  const fromPlus = early && !e.np;
+  return `${fmtH(off ? e.h : fromPlus ? D.std : Math.min(e.h,D.std))} h`
+    + (fromPlus ? ` · ${fmtH(early)} h iz plusa` : early ? ` · odšel ${fmtH(early)} h prej` : '')
     + (over  ? ` · +${fmtH(over)} h v plus` : '');
 }
 /* Plain-language effect of the entry being edited */
@@ -422,7 +428,7 @@ function monthDetailHtml(ym){
   }).join('') || '<p class="sub">Še nič vpisanega.</p>';
   return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop>
     <h2 class="cap">${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
-    <p class="hint" style="margin:12px 0">Prej odšel: ${fmtH(s.early)} h · Sprememba plus ur: ${signed(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>
+    <p class="hint" style="margin:12px 0">${s.fromPlus?`Vzeto iz plusa: ${fmtH(s.fromPlus)} h · `:''}Prej odšel (neplačano): ${fmtH(s.early)} h · Sprememba plus ur: ${signed(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>
     ${list}<div class="stack"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
 }
 
