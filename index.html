@@ -139,7 +139,7 @@ input[type=number]{width:100px;text-align:center}
    ═══════════════════════════════════════════════════════════ */
 const $ = s => document.querySelector(s);
 const MONTHS = ['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
-const TYPES  = {work:'Delal', vac:'Plačan dopust', sick:'Bolniška', plus:'Plus ure'};
+const TYPES  = {work:'Delal/a', vac:'Plačan dopust', sick:'Bolniška', plus:'Plus ure'};
 const WEEKDAYS = ['P','T','S','Č','P','S','N'];
 const FIXED_HOLIDAYS = [
   ['01-01','Novo leto'],['01-02','Novo leto (2. dan)'],['02-08','Prešernov dan'],
@@ -282,7 +282,7 @@ function entryLabel(k,e){
   const over  = off ? e.h : Math.max(0, e.h-D.std);
   const fromPlus = early && !e.np;
   return `${fmtH(off ? e.h : fromPlus ? D.std : Math.min(e.h,D.std))} h`
-    + (fromPlus ? ` · ${fmtH(early)} h iz plusa` : early ? ` · odšel ${fmtH(early)} h prej` : '')
+    + (fromPlus ? ` · ${fmtH(early)} h iz plusa` : early ? ` · odšel/a ${fmtH(early)} h prej` : '')
     + (over  ? ` · +${fmtH(over)} h v plus` : '');
 }
 /* Plain-language effect of the entry being edited */
@@ -331,7 +331,7 @@ function calendarView(){
       <strong>${todayE ? entryLabel(today,todayE) : 'Danes še ni vpisano'}</strong></span>
       <b style="color:var(--accent)">${todayE ? 'Uredi' : 'Vpiši'}</b></button>`;
 
-  const legend = [['work','Delal'],['early','Prej odšel'],['vac','Dopust'],['sick','Bolniška'],['plus','Plus ure'],['ot','Nadure'],['hol','Praznik']]
+  const legend = [['work','Delal/a'],['early','Prej odšel/a'],['vac','Dopust'],['sick','Bolniška'],['plus','Plus ure'],['ot','Nadure'],['hol','Praznik']]
     .map(([c,l]) => `<span><i class="dot ${c}"></i>${l}</span>`).join('')
     + '<span><i class="pay-key"></i>Izplačilo</span>'
     + (D.shShow ? '<span><i class="sw sh-am"></i>Dopoldne</span>' + (D.shMode==='two' ? '<span><i class="sw sh-pm"></i>Popoldne</span>' : '') : '');
@@ -404,7 +404,7 @@ function settingsView(){
   </div>
 
   <div class="card"><h2>Dnevni opomnik</h2>
-    <label class="check"><input type="checkbox" id="remOn" ${D.remOn?'checked':''}> Opomni me, če danes nisem vpisal</label>
+    <label class="check"><input type="checkbox" id="remOn" ${D.remOn?'checked':''}> Opomni me, če danes nisem vpisal/a</label>
     <div class="stack"><input type="time" id="rem" value="${D.rem}" aria-label="Ura opomnika"></div>
     <p class="hint">Obvestila: ${permText}. Opomniki se sprožijo, ko je aplikacija odprta ali jo prebudi telefon; oranžna oznaka na koledarju vedno pokaže nevpisane dni.</p>
     <div class="stack"><button class="btn ghost" data-a="test">Pošlji testno obvestilo</button></div>
@@ -428,7 +428,7 @@ function monthDetailHtml(ym){
   }).join('') || '<p class="sub">Še nič vpisanega.</p>';
   return `<div class="sheet-bg" data-a="close"><div class="sheet" data-stop>
     <h2 class="cap">${MONTHS[m-1]} ${y}</h2>${statsHtml(s)}
-    <p class="hint" style="margin:12px 0">${s.fromPlus?`Vzeto iz plusa: ${fmtH(s.fromPlus)} h · `:''}Prej odšel (neplačano): ${fmtH(s.early)} h · Sprememba plus ur: ${signed(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>
+    <p class="hint" style="margin:12px 0">${s.fromPlus?`Vzeto iz plusa: ${fmtH(s.fromPlus)} h · `:''}Prej odšel/a (neplačano): ${fmtH(s.early)} h · Sprememba plus ur: ${signed(s.pd)} h${s.extra?` · Delo ob vikendih/praznikih: ${fmtH(s.extra)} h`:''}</p>
     ${list}<div class="stack"><button class="btn ghost" data-a="close">Zapri</button></div></div></div>`;
 }
 
@@ -444,7 +444,7 @@ function entrySheetHtml(){
   ${off ? `<p class="hint" style="margin:0 0 4px">${name ? esc(name)+' – praznik, dela prost dan. ' : 'Vikend. '}Dopust in plus ure se ne porabljajo. Če delaš, gredo vse ure v plus.</p>` : ''}
   <div class="chips">${Object.entries(TYPES).map(([k,l]) =>
     `<button class="chip ${draft.t===k?'on':''}" data-a="type" data-v="${k}"><i class="dot ${k==='work'?'work':k}"></i>${l}</button>`).join('')}</div>
-  ${isWork ? stepper('Opravljene ure','h',draft.h) + stepper('Prej odšel za','early',Math.max(0,D.std-draft.h))
+  ${isWork ? stepper('Opravljene ure','h',draft.h) + stepper('Prej odšel/a za','early',Math.max(0,D.std-draft.h))
       + (draft.h<D.std ? `<label class="check" style="padding:8px 0"><input type="checkbox" id="fromPlus" ${draft.np?'':'checked'}> Manjkajoče ure vzemi iz plusa</label>` : '')
     : draft.t==='plus' ? stepper('Porabljene plus ure','h',draft.h) : ''}
   ${effect ? `<div class="effect">${effect}</div>` : ''}
@@ -546,7 +546,7 @@ async function checkReminder(){
   const now = new Date(), today = dayKey(now), hm = pad(now.getHours())+':'+pad(now.getMinutes());
   if(D.e[today] || D.lastN===today || hm<D.rem || isOff(today)) return;
   D.lastN = today; save();
-  const o = {body:'Danes še nisi vpisal delovnega časa.', icon:'icon.svg', tag:'wl'};
+  const o = {body:'Danes še nisi vpisal/a delovnega časa.', icon:'icon.svg', tag:'wl'};
   try{ const r = await navigator.serviceWorker.ready; r.showNotification('Delovni dnevnik', o); }
   catch(e){ new Notification('Delovni dnevnik', o); }
 }
